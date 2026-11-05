@@ -1,0 +1,20 @@
+# Only the published site goes in the repo (the render workspace and its 5 GB of video stay local).
+/*
+!/.gitignore
+!/README.md
+!/index.html
+!/inside.html
+!/app.js
+!/sidebar.js
+!/roof-logo.js
+!/logo.svg
+!/creatives.js
+!/creatives-bff.js
+!/court/
+/oculus-bff/*
+!/oculus-bff/
+/oculus-bff/out/*
+!/oculus-bff/out/
+/oculus-bff/out/inside/*
+!/oculus-bff/out/inside/
+!/oculus-bff/out/inside/*.mp4

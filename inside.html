@@ -1,0 +1,643 @@
+<!doctype html>
+<!-- Barclays Center interiors: every display from the "Promo - Content Creation Guide" (Aug 2025) that the outside
+     model doesn't cover, placed in three simplified spaces (Entrance & lobby, Concourse, Bowl).
+     Screen sizes come from the guide's pixel dimensions; physical sizes are the guide's where it gives them
+     (Atrium 65'9" x 6'6"), otherwise estimates. Drop a PNG/JPG/MP4 onto any screen to preview a design. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Barclays Center Ad Scout · Inside</title>
+<style>
+  :root { --page: #fafafa; --ink: #0b0b0c; --muted: #6e6e73; --card: rgba(255,255,255,.78); --line: rgba(11,11,12,.08); --accent: #ffb800; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font: 14px/1.4 ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+         color: var(--ink); background: #1b1d22; overflow: hidden; -webkit-font-smoothing: antialiased; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  #scene:active { cursor: grabbing; }
+  .ui { position: fixed; z-index: 2; }
+  .bar { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 4px; border-radius: 999px; background: var(--card);
+         backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+  .bar button, .bar a { appearance: none; border: 0; background: transparent; color: var(--ink); font: inherit; font-weight: 600;
+         font-size: 13px; padding: 7px 12px; border-radius: 999px; cursor: pointer; text-decoration: none; }
+  .bar button:hover, .bar a:hover { background: rgba(11,11,12,.08); }
+  .bar button.on { background: var(--ink); color: var(--page); }
+  #views { right: 20px; bottom: 20px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }   /* layout switches */
+  #panel { right: 16px; top: 16px; width: 330px; max-height: calc(100vh - 96px); display: flex; flex-direction: column;
+           background: var(--card); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-radius: 20px;
+           box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+  #panel header { padding: 14px 16px 8px; }
+  #panel h2 { margin: 0; font-size: 15px; font-weight: 800; }
+  #panel header span { color: var(--muted); font-size: 12px; }
+  #list { overflow: auto; padding: 0 8px 10px; }
+  .group { margin: 10px 8px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .row { padding: 8px 10px; border-radius: 12px; cursor: pointer; border: 1px solid transparent; }
+  .row:hover { background: rgba(11,11,12,.06); }
+  .row.sel { border-color: var(--accent); background: rgba(255,184,0,.14); }
+  .row .h { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .row b { font-size: 13px; }
+  .row .d { color: var(--muted); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .row .n { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .row .f { font-size: 11.5px; font-weight: 600; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .clear { margin-top: 6px; font: inherit; font-size: 12px; font-weight: 700; padding: 4px 12px; border: 0; border-radius: 999px;
+                background: rgba(11,11,12,.07); color: var(--ink); cursor: pointer; }
+  #toggle { right: 16px; top: 16px; z-index: 3; display: none; }
+  @media (max-width: 720px) { #panel { width: calc(100vw - 32px); top: auto; bottom: 76px; max-height: 45vh; } }
+</style>
+<canvas id="scene" aria-label="3D model of Barclays Center interior spaces. Drag to rotate, scroll to zoom."></canvas>
+<div id="views" class="ui"></div>
+<aside id="panel" class="ui">
+  <header><h2>Display</h2><span>The screens in this view. Click one to fly to it; press + or drop a PNG, JPG or MP4 onto a screen to add a design.</span></header>
+  <div id="list"></div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Reflector.js"></script>
+<script>
+// ---------- setup ----------
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.outputEncoding = THREE.sRGBEncoding;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060607);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 2000);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xdfe6ff, 0x2a2622, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(40, 80, 30); scene.add(sun);
+
+const mat = c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0.05 });
+const M = { floor: mat(0x3b3d42), dark: mat(0x1f2126), wall: mat(0x55585e), seat: mat(0x2a2c33), bezel: mat(0x0c0c0e),
+            concrete: mat(0x8a8c90), wood: mat(0xc9a06a), glass: new THREE.MeshStandardMaterial({ color: 0x9fb4c8, transparent: true, opacity: 0.18 }) };
+const loadImg = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = src; });
+const box = (w, h, d, m, x, y, z, parent = scene) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); parent.add(o); return o; };
+// dark spaces use unlit materials so the global fill light doesn't grey them out
+const unlit = c => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).convertSRGBToLinear() });
+const canvasTex = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; return t; };
+const flat = (tex, w, h, parent, x, y, z, ry = 0, extra = {}) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+  new THREE.MeshBasicMaterial({ map: tex, transparent: true, ...extra })); m.position.set(x, y, z); m.rotation.y = ry; m.raycast = () => {}; parent.add(m); return m; };
+function glossyFloor(w, d, tint, parent, x, z, mirrorColor, opacity) {
+  const mirror = new THREE.Reflector(new THREE.PlaneGeometry(w, d), { textureWidth: 1024, textureHeight: 1024, color: mirrorColor });
+  mirror.rotation.x = -Math.PI / 2; mirror.position.set(x, 0, z); mirror.raycast = () => {}; parent.add(mirror);
+  const speck = canvasTex(512, 512, (g, cw, ch) => { g.fillStyle = tint; g.fillRect(0, 0, cw, ch);
+    for (let i = 0; i < 9000; i++) { g.fillStyle = `rgba(${Math.random() < .5 ? '230,220,210' : '30,26,24'},${Math.random() * .35})`; g.fillRect(Math.random() * cw, Math.random() * ch, 1.5, 1.5); } });
+  speck.wrapS = speck.wrapT = THREE.RepeatWrapping; speck.repeat.set(w / 5, d / 5);
+  const f = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: speck, roughness: 0.35, metalness: 0.1, transparent: true, opacity, color: 0x666666 }));
+  f.rotation.x = -Math.PI / 2; f.position.set(x, 0.01, z); f.raycast = () => {}; parent.add(f);
+}
+
+// ---------- displays ----------
+// One entry per creative file the guide asks for. A display can have several meshes (mirrored or repeated screens).
+const COLORS = { Plaza: '#2f7de1', Concourse: '#7a4fd6', Bowl: '#e2563b' };
+const displays = [];
+function display(id, area, name, pw, ph, note) {
+  const d = { id, area, name, pw, ph, note, meshes: [], file: null };
+  d.material = new THREE.MeshBasicMaterial({ map: placeholder(d), toneMapped: false });
+  displays.push(d); return d;
+}
+// Striped placeholder with the display's name and pixel size, like the outside model's "your ad here" panels.
+function placeholder(d) {
+  const W = Math.min(4096, Math.max(256, d.pw)), H = Math.max(24, Math.round(W * d.ph / d.pw));
+  const c = document.createElement('canvas'); c.width = W; c.height = Math.min(H, 4096);
+  const g = c.getContext('2d'), col = COLORS[d.area];
+  g.fillStyle = col; g.fillRect(0, 0, c.width, c.height);
+  g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = Math.max(4, c.height / 14);
+  for (let x = -c.height; x < c.width; x += c.height / 2.5) { g.beginPath(); g.moveTo(x, c.height); g.lineTo(x + c.height, 0); g.stroke(); }
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const label = `${d.name.toUpperCase()} · ${d.pw}×${d.ph}`;
+  if (c.width / c.height > 6) {   // ribbons: repeat the label along the strip
+    g.font = `800 ${c.height * 0.55}px ui-rounded, -apple-system, sans-serif`;
+    const step = g.measureText(label).width + c.height * 3;
+    for (let x = step / 2; x < c.width + step; x += step) g.fillText(label, x, c.height / 2);
+  } else {
+    let fs = c.width / 12; g.font = `800 ${fs}px ui-rounded, -apple-system, sans-serif`;
+    while (g.measureText(d.name.toUpperCase()).width > c.width * 0.86) g.font = `800 ${fs *= 0.9}px ui-rounded, -apple-system, sans-serif`;
+    g.fillText(d.name.toUpperCase(), c.width / 2, c.height / 2 - fs * 0.45);
+    g.font = `600 ${fs * 0.55}px ui-rounded, -apple-system, sans-serif`; g.globalAlpha = .85;
+    g.fillText(`${d.pw} × ${d.ph} px`, c.width / 2, c.height / 2 + fs * 0.5);
+  }
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; return t;
+}
+// Static, non-ad parts of a screen (live game, transit board, menu, map).
+function staticTex(text, bg, w = 1024, h = 576) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(255,255,255,.55)'; g.font = `700 ${h / 9}px ui-rounded, -apple-system, sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+}
+// A flat screen of w×h metres facing +z of `parent`, showing display `d` over UV range [u0,u1]×[v0,v1].
+function screen(d, w, h, parent, x, y, z, u0 = 0, u1 = 1, v0 = 0, v1 = 1) {
+  const geo = new THREE.PlaneGeometry(w, h);
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + (u1 - u0) * uv.getX(i), v0 + (v1 - v0) * uv.getY(i));
+  const m = new THREE.Mesh(geo, d.material); m.position.set(x, y, z); m.userData.display = d;
+  parent.add(m); d.meshes.push(m); return m;
+}
+function staticPlane(tex, w, h, parent, x, y, z) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  m.position.set(x, y, z); parent.add(m); return m;
+}
+// A 1920×1080 TV (16:9) with bezel; `parts` place displays/static art inside it by pixel rect [x, y, w, h] (y from top).
+function tv(parent, x, y, z, ry, width, parts) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; parent.add(g);
+  const h = width * 9 / 16; box(width + 0.06, h + 0.06, 0.08, M.bezel, 0, 0, -0.045, g);
+  for (const [what, px, py, pw, ph] of parts) {
+    const w = width * pw / 1920, hh = h * ph / 1080, cx = -width / 2 + width * (px + pw / 2) / 1920, cy = h / 2 - h * (py + ph / 2) / 1080;
+    if (what.material) screen(what, w, hh, g, cx, cy, 0.001); else staticPlane(what, w, hh, g, cx, cy, 0);
+  }
+  return g;
+}
+
+// ---------- the displays the guide lists ----------
+const D = {
+  atrium:   display('atrium', 'Plaza', 'Atrium', 1480, 120, 'Above the bowl entrance in the lobby. 65′9″ × 6′6″.'),
+  wayFull:  display('wayfinding-full', 'Plaza', 'Wayfinding fullscreen', 1080, 1920, 'Touchscreen kiosks on the plaza (3).'),
+  wayAlt:   display('wayfinding-alt', 'Plaza', 'Wayfinding alt ad', 1080, 600, 'Top of the kiosk while the map is showing.'),
+  store:    display('store-panel', 'Plaza', 'Store panel', 174, 320, 'Small panel; placement estimated by the entrance.'),
+  boH:      display('box-office-h', 'Concourse', 'Box office horizontal', 1600, 1080, 'Above the box office windows.'),
+  boV:      display('box-office-v', 'Concourse', 'Box office vertical', 720, 1820, 'Tall screens flanking the windows.'),
+  lwrap:    display('lwrap', 'Concourse', 'LWrap', 260, 934, 'Right-hand strip on BCTV screens; video area stays blank. Hard edge, no transparency.'),
+  oneX5:    display('1x5', 'Concourse', '1x5 TV array', 5760, 1080, 'Middle three TVs of the five-TV arrays (export 1x5_01, 1x5_02). Keep logos and text off the bezels.'),
+  menu:     display('menu', 'Concourse', 'Menu', 1920, 400, 'Bottom strip of concession menu boards; design area is the left 1066×400.'),
+  transit:  display('transit', 'Concourse', 'Transit data', 432, 1080, 'Right strip of the subway board; design area 432×982.'),
+  elevator: display('elevator', 'Concourse', 'Elevator TV', 1920, 1080, 'Visible content about 835 px tall; build past the mask.'),
+  store2:   display('team-store-1x2', 'Concourse', 'Team store 1x2', 3840, 1080, 'Two-TV wall in the team store.'),
+  store7:   display('team-store-1x7', 'Concourse', 'Team store 1x7', 13440, 1080, 'Seven-TV wall above the team store entrance.'),
+  main:     display('main-video', 'Bowl', 'Main video', 1920, 1080, 'Four faces of the center-hung scoreboard.'),
+  ring:     display('upper-ring', 'Bowl', 'Upper ring', 3872, 96, 'Ring on top of the scoreboard. Must loop seamlessly.'),
+  ribbon:   display('360-ribbon', 'Bowl', '360 ribbon', 7128, 36, 'Circles the bowl above Suite Level A; mirrored on the opposite side. Scoring at px 2832–4080 and 5784–7032, clocks at 2736–2832 and 7032–7128.'),
+  sideline: display('sideline-ribbon', 'Bowl', 'Sideline ribbon', 2760, 36, 'Above Suite Level B, north and south sides (mirrored).'),
+  endFull:  display('endwall-full', 'Bowl', 'Full endwall', 580, 220, 'Upper pavilion, east and west (mirrored).'),
+  endHalf:  display('endwall-half', 'Bowl', 'Half endwall', 288, 190, 'Right part of the endwall during sporting events; stats take the left. Toggle with the Full/Half buttons.'),
+  nets:     display('scorers-nets', 'Bowl', 'Nets scorer’s table', 2160, 180, 'Courtside, basketball only. No white or light backgrounds.'),
+  liberty:  display('scorers-liberty', 'Bowl', 'Liberty scorer’s table', 1800, 180, 'Same table for Liberty games. Toggle with the Nets/Liberty buttons.'),
+};
+
+// ---------- Bowl (origin) ----------
+// Modelled on seat-view photos: black seats and fascias, light aisle stairs, a lit suite level between the two ribbon
+// bands, a steep upper bowl, black truss roof with rows of spotlights, pale herringbone court with a black apron.
+// 360 ribbon octagon from the guide's pixel map at a 16 mm pitch: N/S sides 2736 px, diagonals 1740 px, E/W 912 px.
+const P = 0.016, RIB_Y = 12.25;
+const bowl = new THREE.Group(); scene.add(bowl);
+function oct(hx, hz, c) { const a = hx - c, e = hz - c; return [[-a, -hz], [a, -hz], [hx, -e], [hx, e], [a, hz], [-a, hz], [-hx, e], [-hx, -e]]; }
+const tiled = (draw, w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; return t; };
+// one tile = 6 m of a seating row: black seat backs and a slightly lighter tread (aisles are separate strips)
+const seatTex = tiled((g, w, h) => { g.fillStyle = '#0e0e10'; g.fillRect(0, 0, w, h); g.fillStyle = '#18191c'; g.fillRect(0, h * .62, w, h * .38);
+  g.fillStyle = '#222328'; for (let x = 0; x < w; x += w / 12) g.fillRect(x + 2, h * .12, w / 12 - 4, h * .06); }, 512, 64);
+const suiteTex = tiled((g, w, h) => { g.fillStyle = '#0d0d0f'; g.fillRect(0, 0, w, h);
+  for (let x = 0; x < w; x += w / 4) { const grd = g.createLinearGradient(0, h * .2, 0, h * .9); grd.addColorStop(0, '#f2b56b'); grd.addColorStop(1, '#7a4a22');
+    g.fillStyle = grd; g.fillRect(x + 6, h * .22, w / 4 - 12, h * .6); g.fillStyle = 'rgba(255,240,210,.8)'; g.fillRect(x + w / 8 - 3, h * .26, 6, 4); } }, 512, 128);
+// band between two octagons; u runs along the perimeter (metres / uScale), v up the slope (metres / vScale)
+function band(inner, outer, y0, y1, m, uScale = 6, vScale = 0.9) {
+  const pos = [], uv = []; let run = 0;
+  for (let i = 0; i < 8; i++) {
+    const [a, b] = [inner[i], inner[(i + 1) % 8]], [c, d] = [outer[i], outer[(i + 1) % 8]];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]), up = Math.hypot(Math.hypot(c[0] - a[0], c[1] - a[1]), y1 - y0);
+    const u0 = run / uScale, u1 = (run + len) / uScale, v1 = up / vScale; run += len;
+    pos.push(a[0], y0, a[1], c[0], y1, c[1], b[0], y0, b[1], b[0], y0, b[1], c[0], y1, c[1], d[0], y1, d[1]);
+    uv.push(u0, 0, u0, v1, u1, 0, u1, 0, u0, v1, u1, v1);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals();
+  const m2 = m.clone(); m2.side = THREE.DoubleSide; const mesh = new THREE.Mesh(g, m2); bowl.add(mesh); return mesh;
+}
+// light-grey aisle stairs running straight up a seating band, about every 8 m along each side
+const aisleMat = new THREE.MeshStandardMaterial({ color: 0x45464b, roughness: .8, side: THREE.DoubleSide });
+function aisles(inner, outer, y0, y1, spacing = 8, w = 0.9) {
+  const pos = [], lift = 0.04;
+  for (let i = 0; i < 8; i++) {
+    const [a, b] = [inner[i], inner[(i + 1) % 8]], [c, d] = [outer[i], outer[(i + 1) % 8]];
+    const n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / spacing));
+    for (let k = 0; k < n; k++) {
+      const f = (k + 0.5) / n, lerp = (p, q) => [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f];
+      const pi = lerp(a, b), po = lerp(c, d), dl = Math.hypot(b[0] - a[0], b[1] - a[1]), t = [(b[0] - a[0]) / dl * w / 2, (b[1] - a[1]) / dl * w / 2];
+      const q = [[pi[0] - t[0], y0 + lift, pi[1] - t[1]], [pi[0] + t[0], y0 + lift, pi[1] + t[1]], [po[0] + t[0], y1 + lift, po[1] + t[1]], [po[0] - t[0], y1 + lift, po[1] - t[1]]];
+      pos.push(...q[0], ...q[1], ...q[2], ...q[0], ...q[2], ...q[3]);
+    }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+  bowl.add(new THREE.Mesh(g, aisleMat));
+}
+const seatMat = new THREE.MeshStandardMaterial({ map: seatTex, color: 0x8a8a8a, roughness: .9 }), black = mat(0x0b0b0d);
+const I0 = oct(16.6, 9.9, 2.4), O1 = oct(41.6, 27.0, 19.7), O1b = oct(43.6, 29.0, 20.5), O2 = oct(46, 31.4, 21.5), O3 = oct(74, 60, 31);
+band(I0, O1, 0.5, 11.6, seatMat); aisles(I0, O1, 0.5, 11.6, 7);  // lower bowl (100 level)
+band(O1, O1, 11.6, 12.9, black);                                   // Suite A fascia: 360 ribbon
+band(O1, O1b, 12.9, 12.9, black);
+band(O1b, O1b, 12.9, 16.2, new THREE.MeshBasicMaterial({ map: suiteTex, toneMapped: false }), 4, 3.3);   // lit suites
+band(O1b, O2, 16.2, 16.2, black);
+band(O2, O2, 16.2, 17.7, black);                                   // Suite B fascia: sideline ribbons
+band(O2, O3, 17.7, 37, seatMat); aisles(O2, O3, 17.7, 37, 10);   // upper bowl (200 level)
+band(O3, O3, 37, 47, mat(0x101012));
+box(160, 0.2, 130, black, 0, -0.1, 0, bowl);
+// vomitories: dark tunnel openings set into the slope halfway up the lower bowl, with a rail along the top edge
+const vomit = (x, z, ry, slope) => { const g = new THREE.Group(); g.position.set(x, 5.95, z); g.rotation.y = ry; g.rotateX(-slope); bowl.add(g);
+  box(2.6, 0.06, 3.4, new THREE.MeshBasicMaterial({ color: 0x050505 }), 0, 0.05, 0, g); box(2.8, 0.5, 0.06, mat(0x3a3b40), 0, 0.3, -1.72, g); };
+for (const x of [-15, -5, 5, 15]) { vomit(x, -18.45, 0, Math.atan2(11.1, 17.1)); vomit(x, 18.45, Math.PI, Math.atan2(11.1, 17.1)); }
+for (const s of [-1, 1]) vomit(s * 29.1, 0, -s * Math.PI / 2, Math.atan2(11.1, 25));
+// roof: black truss grid with rows of spotlights, a few hanging banners
+box(160, 0.4, 130, mat(0x070708), 0, 48, 0, bowl);
+const truss = mat(0x111215);
+for (let x = -64; x <= 64; x += 12) box(0.5, 1.6, 120, truss, x, 46, 0, bowl);
+for (let z = -56; z <= 56; z += 12) box(130, 0.5, 0.4, truss, 0, 45.4, z, bowl);
+{ const dots = []; const ring = (hx, hz, y, step) => { for (let x = -hx; x <= hx; x += step) dots.push([x, y, -hz], [x, y, hz]); for (let z = -hz + step; z < hz; z += step) dots.push([-hx, y, z], [hx, y, z]); };
+  ring(30, 20, 44.5, 0.9); ring(46, 34, 44.5, 1.1); ring(58, 46, 45, 1.4);
+  for (let x = -40; x <= 40; x += 2.2) dots.push([x, 44.8, -8], [x, 44.8, 8]);
+  const im = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }), dots.length);
+  const m4 = new THREE.Matrix4(); dots.forEach((d, i) => im.setMatrixAt(i, m4.makeTranslation(...d))); bowl.add(im); }
+for (const x of [-24, -18, -12, 12, 18, 24]) box(2.4, 4.2, 0.05, mat(0xd8d9dc), x, 40, -57, bowl);
+const courtLight = new THREE.SpotLight(0xffffff, 0.55, 90, 0.42, 0.5); courtLight.position.set(0, 44, 0); courtLight.target.position.set(0, 0, 0); bowl.add(courtLight, courtLight.target);
+// court: pale herringbone, grey keys, black apron; the center-court logo follows the Nets/Liberty switch
+{ const c = document.createElement('canvas'), W = 2048, H = 1376; c.width = W; c.height = H; const g = c.getContext('2d');
+  const sx = W / 32.65, cx = x => (x + 16.325) * sx, cy = z => (z + 9.62) * sx;
+  g.fillStyle = '#0c0c0d'; g.fillRect(0, 0, W, H);
+  g.save(); g.beginPath(); g.rect(cx(-14.325), cy(-7.62), 28.65 * sx, 15.24 * sx); g.clip();
+  g.fillStyle = '#dcd5c8'; g.fillRect(0, 0, W, H);
+  for (let y = -40; y < H + 40; y += 22) for (let x = -40; x < W + 40; x += 44) {   // herringbone planks, low contrast
+    const shade = 212 + ((x * 7 + y * 13) % 11) - 5; g.fillStyle = `rgb(${shade},${shade - 7},${shade - 18})`;
+    g.save(); g.translate(x + ((y / 22) % 2) * 22, y); g.rotate(((y / 22) % 2 ? -1 : 1) * Math.PI / 4);
+    g.fillRect(0, 0, 40, 10); g.strokeStyle = 'rgba(120,105,85,.25)'; g.lineWidth = 1; g.strokeRect(0, 0, 40, 10); g.restore(); }
+  g.fillStyle = 'rgba(110,112,116,.55)'; for (const s of [-1, 1]) g.fillRect(s < 0 ? cx(-14.325) : cx(14.325 - 5.8), cy(-2.44), 5.8 * sx, 4.88 * sx);
+  g.restore();
+  g.strokeStyle = '#fafafa'; g.lineWidth = 0.05 * sx; g.strokeRect(cx(-14.325), cy(-7.62), 28.65 * sx, 15.24 * sx);
+  g.beginPath(); g.moveTo(cx(0), cy(-7.62)); g.lineTo(cx(0), cy(7.62)); g.stroke();
+  g.beginPath(); g.arc(cx(0), cy(0), 1.83 * sx, 0, Math.PI * 2); g.stroke();
+  for (const s of [-1, 1]) { const bx = s * (14.325 - 1.6);
+    g.strokeRect(s < 0 ? cx(-14.325) : cx(14.325 - 5.8), cy(-2.44), 5.8 * sx, 4.88 * sx);
+    g.beginPath(); g.arc(cx(bx), cy(0), 7.24 * sx, s < 0 ? -1.2 : Math.PI - 1.2 + 0.0, s < 0 ? 1.2 : Math.PI + 1.2); g.stroke(); }
+  const base = document.createElement('canvas'); base.width = W; base.height = H; base.getContext('2d').drawImage(c, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8;
+  const court = new THREE.Mesh(new THREE.PlaneGeometry(32.65, 19.24), new THREE.MeshStandardMaterial({ map: t, color: 0xc4c4c4, roughness: .55 }));
+  court.rotation.x = -Math.PI / 2; court.position.y = 0.02; bowl.add(court);
+  const logos = { nets: loadImg('court/nets-logo.webp'), liberty: loadImg('court/liberty-logo.svg') };
+  window.setCourtTeam = async team => {
+    const img = await logos[team]; g.drawImage(base, 0, 0);
+    if (team === 'nets') {   // the ball is 1.7× the center circle: crop the logo's circle (centre 1000,852, radius 765 of 2000×1704)
+      const r = 1.83 * 1.7 * sx; g.save(); g.beginPath(); g.arc(cx(0), cy(0), r, 0, Math.PI * 2); g.clip();
+      g.fillStyle = '#fff'; g.fill(); g.drawImage(img, 1000 - 790, 852 - 790, 1580, 1580, cx(0) - r, cy(0) - r, 2 * r, 2 * r); g.restore();
+    } else { const h = 3.6 * 1.7 * sx, w = h * 123 / 150; g.drawImage(img, cx(0) - w / 2, cy(0) - h / 2, w, h); }
+    t.needsUpdate = true;
+  };
+  setCourtTeam('nets'); }
+// baskets on stanchions behind each baseline
+for (const s of [-1, 1]) { const g = new THREE.Group(); g.position.x = s * 13.1; bowl.add(g);
+  box(1.2, 1.1, 1.6, black, s * 2.6, 0.55, 0, g); box(0.25, 3.4, 0.25, black, s * 2.4, 2.2, 0, g); box(2.4, 0.22, 0.22, black, s * 1.2, 3.9, 0, g);
+  const bb = box(0.04, 1.07, 1.83, new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: .35 }), 0, 3.6, 0, g);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.02, 8, 24), mat(0xe8542a)); rim.rotation.x = Math.PI / 2; rim.position.set(-s * 0.38, 3.05, 0); g.add(rim); }
+
+// 360 ribbon: one strip around the fascia; the 7128 px canvas runs N → NE → E → SE, then repeats S → SW → W → NW.
+{ const segPx = [2736, 1740, 912, 1740], pos = [], uv = [], h = 36 * P, ring = oct(41.55, 26.95, 19.68);
+  let px = 0;
+  for (let i = 0; i < 8; i++) {
+    const [a, b] = [ring[i], ring[(i + 1) % 8]], u0 = px / 7128, u1 = (px + segPx[i % 4]) / 7128;
+    px = (px + segPx[i % 4]) % 7128;
+    pos.push(a[0], RIB_Y - h / 2, a[1], b[0], RIB_Y - h / 2, b[1], b[0], RIB_Y + h / 2, b[1], a[0], RIB_Y - h / 2, a[1], b[0], RIB_Y + h / 2, b[1], a[0], RIB_Y + h / 2, a[1]);
+    uv.push(u0, 0, u1 || 1, 0, u1 || 1, 1, u0, 0, u1 || 1, 1, u0, 1);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  const m = new THREE.Mesh(g, D.ribbon.material); m.userData.display = D.ribbon; bowl.add(m); D.ribbon.meshes.push(m); }
+// Sideline ribbons on the Suite B fascia, north and south, above the suites.
+for (const s of [-1, 1]) { const g = new THREE.Group(); g.position.set(0, 16.95, s * 31.35); g.rotation.y = s < 0 ? 0 : Math.PI; bowl.add(g);
+  screen(D.sideline, 2760 * P, 36 * P, g, 0, 0, 0); }
+// Endwalls, east and west, at the top of the upper pavilion; the half-endwall layout swaps in with the toggle.
+const endwalls = [];
+for (const s of [-1, 1]) { const g = new THREE.Group(); g.position.set(s * 70, 39, 0); g.rotation.set(0, -s * Math.PI / 2, 0); g.rotateX(0.22); bowl.add(g);
+  const w = 580 * P, h = 220 * P; box(w + 0.4, h + 0.4, 0.4, black, 0, 0, -0.22, g);
+  const full = screen(D.endFull, w, h, g, 0, 0, 0);
+  const half = new THREE.Group(); g.add(half); half.visible = false;
+  staticPlane(staticTex('TEAM STATS', '#222', 600, 400), w * 0.5, h, half, -w / 4, 0, 0.001);
+  screen(D.endHalf, w * 0.5, h, half, w / 4, 0, 0.002);
+  endwalls.push({ full, half }); }
+// Center-hung scoreboard (Daktronics, 2012): four 16 × 27 ft main displays, four 7 × 27 ft displays above them,
+// a ring above and a ring below, Barclays Center lettering on top. Black housing.
+const SB_Y = 24;
+{ const g = new THREE.Group(); g.position.y = SB_Y; bowl.add(g);
+  const mw = 8.23, mh = 4.88, sh = 2.13, half = 4.45;
+  box(2 * half - 0.1, mh + sh + 0.6, 2 * half - 0.1, black, 0, sh / 2 + 0.15, 0, g);
+  const upper = staticTex('', '#08090b', 1024, 266);
+  for (let i = 0; i < 4; i++) { const f = new THREE.Group(); f.rotation.y = i * Math.PI / 2; g.add(f);
+    screen(D.main, mw, mh, f, 0, 0, half + 0.01);
+    staticPlane(upper, mw, sh, f, 0, mh / 2 + 0.3 + sh / 2, half + 0.01);
+    box(mw + 0.3, 0.12, 0.3, mat(0x2a2b30), 0, mh / 2 + 0.15, half, f); }
+  for (let i = 0; i < 4; i++) { const c = box(1.2, mh + sh + 0.6, 1.2, black, 0, sh / 2 + 0.15, 0, g); c.rotation.y = Math.PI / 4;
+    c.position.set(Math.cos(i * Math.PI / 2 + Math.PI / 4) * half * 1.33, sh / 2 + 0.15, Math.sin(i * Math.PI / 2 + Math.PI / 4) * half * 1.33); }
+  const r = 6.0, rh = 2 * Math.PI * r * 96 / 3872, topY = mh / 2 + 0.3 + sh + 0.25 + rh / 2;
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(r, r, rh, 96, 1, true), D.ring.material);
+  ring.position.y = topY; ring.userData.display = D.ring; g.add(ring); D.ring.meshes.push(ring);
+  const ringBack = new THREE.Mesh(new THREE.CylinderGeometry(r - 0.05, r - 0.05, rh + 0.3, 48, 1, true), new THREE.MeshBasicMaterial({ color: 0x050505, side: THREE.BackSide }));
+  ringBack.position.y = topY; g.add(ringBack);
+  // signage ring on top: the same Barclays Center logo as the outside of the building (logo.svg, 1819 × 222), three times around
+  const sign = document.createElement('canvas'); sign.width = 4096; sign.height = 104; const sg = sign.getContext('2d');
+  const st = new THREE.CanvasTexture(sign); st.encoding = THREE.sRGBEncoding; st.anisotropy = 8;
+  loadImg('logo.svg').then(img => { const h = 88, w = h * 1819 / 222;
+    for (let k = 0; k < 3; k++) sg.drawImage(img, k * 4096 / 3 + (4096 / 3 - w) / 2, (104 - h) / 2, w, h); st.needsUpdate = true; });
+  const signRing = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.95, 96, 1, true), new THREE.MeshBasicMaterial({ map: st, transparent: true, toneMapped: false }));
+  signRing.position.y = topY + rh / 2 + 0.6; g.add(signRing);
+  // lower ring (not an ad surface in the guide)
+  const low = new THREE.Mesh(new THREE.CylinderGeometry(5.0, 5.0, 1.1, 64, 1, true), new THREE.MeshBasicMaterial({ map: staticTex('', '#0a0a0c', 1024, 64), toneMapped: false }));
+  low.position.y = -mh / 2 - 0.85; g.add(low);
+  box(7, 1.2, 7, black, 0, -mh / 2 - 0.4, 0, g);
+  for (const [x, z] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) box(0.06, 18, 0.06, truss, x, topY + 10, z, g); }
+// Scorer's table on the north sideline, facing the court; Nets or Liberty creative.
+const scorer = new THREE.Group(); scorer.position.set(0, 0.48, -9.4); bowl.add(scorer);
+box(13, 0.95, 0.9, black, 0, 0, -0.46, scorer);
+const netsMesh = screen(D.nets, 2160 / 180 * 0.72, 0.72, scorer, 0, 0, 0.001);
+const libMesh = screen(D.liberty, 1800 / 180 * 0.72, 0.72, scorer, 0, 0, 0.001); libMesh.visible = false;
+
+// ---------- Concourse (x = 200) ----------
+const conc = new THREE.Group(); conc.position.x = 200; scene.add(conc);
+// Modelled on photos of the main concourse: polished grey concrete floor, a black open ceiling with ducts crossed by
+// long diagonal light lines, lit concession storefronts in dark wood frames along the north wall, a glass curtain wall
+// onto the street on the south side, brown MAIN CONCOURSE wayfinding totems and TVs hung from the ceiling.
+const CH = 7.2, wood = unlit(0x3b2c22), charcoalC = unlit(0x1b1c1f);
+glossyFloor(70, 16, '#55575a', conc, 0, 0, 0x9a9a9a, 0.65);
+box(70, 0.3, 16, unlit(0x060607), 0, CH, 0, conc);                               // black deck
+for (const [z, r] of [[-5.5, 0.45], [-2, 0.3], [3.5, 0.55]]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 70, 12), unlit(0x16171a));
+  d.rotation.z = Math.PI / 2; d.position.set(0, CH - 0.8 - r, z); conc.add(d); }                              // exposed ducts
+for (let x = -33; x <= 33; x += 6) box(0.4, 0.8, 16, unlit(0x0e0f11), x, CH - 0.4, 0, conc);                 // beams
+{ const strip = unlit(0xfff1d6); for (let i = -14; i <= 14; i++) { const l = box(19, 0.05, 0.09, strip, i * 2.4, CH - 1.0, 0, conc); l.rotation.y = 0.62; l.raycast = () => {}; } }
+box(70, CH, 0.3, charcoalC, 0, CH / 2, -8, conc);                                // north wall behind the stands
+box(0.3, CH, 16, charcoalC, -35, CH / 2, 0, conc); box(0.3, CH, 16, charcoalC, 35, CH / 2, 0, conc);
+// south side: glass curtain wall onto the street, solid where the 1x5 array and the team store screens hang
+for (const [x0, x1] of [[-35, -21], [-21, -7], [-7, 23], [23, 35]]) {
+  const solid = (x0 === -21) || (x0 === 23), w = x1 - x0, cx = (x0 + x1) / 2;
+  if (solid) { box(w, CH, 0.3, charcoalC, cx, CH / 2, 8, conc); continue; }
+  box(w, CH, 0.06, M.glass, cx, CH / 2, 8, conc);
+  for (let x = x0; x <= x1; x += 2.5) box(0.12, CH, 0.18, unlit(0x0b0b0c), x, CH / 2, 8, conc);
+  box(w, 0.12, 0.2, unlit(0x0b0b0c), cx, 2.6, 8, conc);
+}
+flat(canvasTex(1024, 256, (g, w, h) => { g.fillStyle = '#b9c3c7'; g.fillRect(0, 0, w, h);                    // the street outside: trees and daylight
+  for (let i = 0; i < 70; i++) { const x = Math.random() * w, y = h * (.35 + Math.random() * .4), r = 20 + Math.random() * 50;
+    const s = g.createRadialGradient(x, y, 0, x, y, r); s.addColorStop(0, `rgba(${60 + Math.random() * 40},${100 + Math.random() * 50},60,.85)`); s.addColorStop(1, 'rgba(70,110,60,0)');
+    g.fillStyle = s; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  g.fillStyle = '#6d6f72'; g.fillRect(0, h * .78, w, h * .22); }), 70, CH, conc, 0, CH / 2, 12, Math.PI, { transparent: false });
+// concession storefronts: lit glass window over a counter, dark wood fins, glowing name sign, pendant lamps in front
+const STANDS = [[-26, 'DELI'], [-19, 'GRILL'], [-12, 'PIZZA'], [-5, 'BURGERS'], [2, 'BBQ'], [8.5, 'TACOS']];
+const signTex = name => canvasTex(512, 96, (g, w, h) => { g.fillStyle = '#111'; g.fillRect(0, 0, w, h);
+  g.shadowColor = '#fff'; g.shadowBlur = 14; g.fillStyle = '#fff'; g.font = '800 58px ui-rounded, -apple-system, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, w / 2, h / 2 + 3); });
+const lampGeo = new THREE.SphereGeometry(0.28, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), lampMat = unlit(0x2a2b2e), bulb = unlit(0xfff4dd);
+for (const [x, name] of STANDS) {
+  box(6.2, 1.8, 0.1, unlit(0xeef0f0), x, 1.9, -7.82, conc);                     // bright kitchen behind the glass
+  box(6.2, 1.1, 0.7, wood, x, 0.55, -7.5, conc);                                   // counter
+  box(6.2, 0.05, 0.75, unlit(0x9a9ea3), x, 1.12, -7.5, conc);                      // steel top
+  for (const dx of [-3.2, 3.2]) box(0.4, 5.2, 0.6, wood, x + dx, 2.6, -7.6, conc); // wood fins between stands
+  box(6.8, 0.4, 0.5, wood, x, 2.72, -7.6, conc);                                   // header, under the TV
+  flat(signTex(name), 2.2, 0.36, conc, x - 1.9, 2.72, -7.33, 0, { transparent: false });
+  for (const dx of [-1.6, 1.6]) { const l = new THREE.Mesh(lampGeo, lampMat); l.rotation.x = Math.PI; l.position.set(x + dx, 4.6, -5.6); conc.add(l);
+    box(0.012, CH - 4.6, 0.012, lampMat, x + dx, (CH + 4.6) / 2, -5.6, conc); box(0.3, 0.02, 0.3, bulb, x + dx, 4.6, -5.6, conc); }
+}
+box(5, CH, 0.4, wood, 14, CH / 2, -7.75, conc);                                   // wood wall panel behind the transit board
+// MAIN CONCOURSE wayfinding totems
+const totemTex = canvasTex(512, 1280, (g, w, h) => { g.fillStyle = '#4a372a'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#efe7dc'; g.font = '700 40px ui-rounded, -apple-system, sans-serif'; g.fillText('MAIN CONCOURSE', 40, 80); g.fillRect(40, 100, 430, 3);
+  let y = 170; for (const [arrow, small, big] of [['↑', 'SECTIONS', '108–124'], ['↑', 'ELEVATOR TO SUITES', 'A1–A63'], ['→', 'SECTIONS', '107–106'], ['↖', 'UP TO SECTIONS', '201–231']]) {
+    g.font = '700 70px -apple-system, sans-serif'; g.fillText(arrow, 40, y + 62); g.font = '600 24px ui-rounded, -apple-system, sans-serif'; g.fillText(small, 130, y + 20);
+    g.font = '700 54px ui-rounded, -apple-system, sans-serif'; g.fillText(big, 130, y + 76); y += 150; if (y > 450 && y < 500) { g.fillRect(40, y - 20, 430, 3); } }
+  g.save(); g.translate(60, h - 60); g.rotate(-Math.PI / 2); g.fillStyle = 'rgba(0,0,0,.35)'; g.font = '800 76px ui-rounded, -apple-system, sans-serif'; g.fillText('MAIN CONCOURSE', 0, 0); g.restore(); });
+for (const x of [-30, 6, 20]) { box(1.5, 3.8, 0.5, wood, x, 1.9, 5.2, conc); flat(totemTex, 1.5, 3.8, conc, x, 1.9, 4.94, Math.PI, { transparent: false }); flat(totemTex, 1.5, 3.8, conc, x, 1.9, 5.46, 0, { transparent: false }); }
+// TVs hung from the ceiling down the middle, facing the west end
+const liveTV = staticTex('LIVE GAME', '#24324a', 1920, 1080);
+for (const x of [-16, 0, 16]) { const g = tv(conc, x, 4.3, 1.5, -Math.PI / 2, 1.4, [[liveTV, 0, 0, 1920, 1080]]); box(0.04, CH - 4.7, 0.04, lampMat, x + 0.1, (CH + 4.7) / 2, 1.5, conc); }
+const live = staticTex('LIVE GAME', '#24324a', 1660, 934), bcBar = staticTex('BARCLAYS CENTER', '#0d3a5c', 1920, 146);
+const bctv = (x, z, ry, w = 1.25) => tv(conc, x, 3.3, z, ry, w, [[live, 0, 0, 1660, 934], [bcBar, 0, 934, 1920, 146], [D.lwrap, 1660, 0, 260, 934]]);
+// BCTV screens with LWraps hanging along the north wall
+for (const x of [-26, -12, 2]) bctv(x, -7.4, 0);
+// 1x5 array on the south wall: BCTV + LWrap on each end, 1x5 content across the middle three
+{ const w = 1.25, gap = 0.08, y = 3.2;
+  for (let i = 0; i < 5; i++) {
+    const x = -14 + (i - 2) * (w + gap);
+    if (i === 0 || i === 4) bctv(x, 7.4, Math.PI, w);
+    else tv(conc, x, y + 0.1, 7.4, Math.PI, w, [[D.oneX5, 0, 0, 1920, 1080]]);
+  }
+  // re-map the three middle screens to thirds of the 5760 px canvas
+  const mids = D.oneX5.meshes; mids.forEach((m, k) => { const uv = m.geometry.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, (k + (uv.getX(i) > 0.5 ? 1 : 0)) / 3); uv.needsUpdate = true; }); }
+// Transit data board on the north wall
+tv(conc, 14, 3.2, -7.4, 0, 1.6, [[staticTex('NEARBY SUBWAYS', '#10213a', 1488, 1080), 0, 0, 1488, 1080], [D.transit, 1488, 0, 432, 1080]]);
+// Concession stand with three menu boards; the ad is the bottom 400 px
+box(14, 1.8, 0.1, unlit(0xeef0f0), 24, 1.9, -7.82, conc); box(14, 1.1, 1.2, wood, 24, 0.55, -6.6, conc); box(14, 0.05, 1.25, unlit(0x9a9ea3), 24, 1.12, -6.6, conc); box(14, 0.15, 3, wood, 24, 4.4, -6.6, conc);
+for (const k of [-1, 0, 1]) tv(conc, 24 + k * 4.4, 3.3, -7.4, 0, 4.2 * 16 / 9 / 1.9, [[staticTex('MENU', '#2c4a2c', 1920, 680), 0, 0, 1920, 680], [D.menu, 0, 680, 1920, 400]]);
+// Elevator lobby at the west end
+for (const z of [-3.5, 3.5]) box(0.2, 2.6, 1.6, mat(0x9a9ea5), -34.8, 1.3, z, conc);
+tv(conc, -34.7, 3.1, 0, Math.PI / 2, 1.6, [[D.elevator, 0, 0, 1920, 1080]]);
+// Team store at the east end: 1x7 wall over the entrance, 1x2 wall inside on the south wall
+{ const w = 1.25, gap = 0.04;
+  for (let i = 0; i < 7; i++) { const z = (i - 3) * (w + gap);
+    tv(conc, 34.7, 4.2, z, -Math.PI / 2, w, [[D.store7, 0, 0, 1920, 1080]]); }
+  D.store7.meshes.forEach((m, k) => { const uv = m.geometry.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, (k + (uv.getX(i) > 0.5 ? 1 : 0)) / 7); uv.needsUpdate = true; });
+  box(0.1, 3, 5, M.glass, 34.8, 1.5, 0, conc);
+  for (let i = 0; i < 2; i++) tv(conc, 30 + (i - 0.5) * (1.6 + gap), 3, 7.4, Math.PI, 1.6, [[D.store2, 0, 0, 1920, 1080]]);
+  D.store2.meshes.forEach((m, k) => { const uv = m.geometry.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, (k + (uv.getX(i) > 0.5 ? 1 : 0)) / 2); uv.needsUpdate = true; }); }
+
+// ---------- Entrance & lobby (x = -200) ----------
+const ent = new THREE.Group(); ent.position.x = -200; scene.add(ent);
+// Lobby modelled on photos of the atrium: an 18 m hall, polished terrazzo floor, black ceiling with exposed beams and
+// hanging cylinder lights, a blue-lit metal curtain wrapping the upper walls with silver BARCLAYS CENTER letters,
+// the atrium screen on a black fascia over the bowl entrances, a wayfinding band and slate columns below.
+const LH = 18;                                                       // lobby height
+// floor: a planar mirror under a semi-transparent terrazzo layer gives the glossy reflections in the photos
+glossyFloor(60, 34, '#4a433e', ent, 0, -2, 0x8a8580, 0.45);
+// walls: dark charcoal below 10 m, the blue curtain above
+const charcoal = unlit(0x1a1c20);
+box(60, 10, 0.3, charcoal, 0, 5, -19.15, ent);                       // back wall to the bowl
+box(0.3, 10, 34, charcoal, -30, 5, -2, ent); box(0.3, 10, 34, charcoal, 30, 5, -2, ent);
+const curtain = canvasTex(1024, 512, (g, w, h) => {                  // vertical chain-mail strands, uplit from the bottom
+  const grd = g.createLinearGradient(0, h, 0, 0); grd.addColorStop(0, '#5cc6fb'); grd.addColorStop(.2, '#1462b0'); grd.addColorStop(.6, '#082554'); grd.addColorStop(1, '#040e22');
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  for (let x = 0; x < w; x += 2) { g.fillStyle = `rgba(${Math.random() < .5 ? '0,10,40' : '200,240,255'},${Math.random() * .28})`; g.fillRect(x, 0, 1 + Math.random() * 2, h); }
+  for (let k = 0; k < 14; k++) { const x = Math.random() * w, r = 30 + Math.random() * 90;   // brighter folds where the lights hit
+    const s = g.createRadialGradient(x, h, 0, x, h, h * 1.2); s.addColorStop(0, 'rgba(190,240,255,.3)'); s.addColorStop(1, 'rgba(190,240,255,0)');
+    g.fillStyle = s; g.fillRect(x - r, 0, r * 2, h); } });
+curtain.wrapS = THREE.RepeatWrapping;
+const curtainSide = curtain.clone(); curtainSide.needsUpdate = true; curtainSide.repeat.set(1.2, 1);
+curtain.repeat.set(2, 1);
+flat(curtain, 60, LH - 10, ent, 0, 10 + (LH - 10) / 2, -18.98, 0, { transparent: false });
+flat(curtainSide, 34, LH - 10, ent, -29.84, 10 + (LH - 10) / 2, -2, Math.PI / 2, { transparent: false });
+flat(curtainSide, 34, LH - 10, ent, 29.84, 10 + (LH - 10) / 2, -2, -Math.PI / 2, { transparent: false });
+// silver BARCLAYS CENTER letters (logo.svg; the eagle's white fill is cut out) on the curtain
+{ const c = document.createElement('canvas'); c.width = 2048; c.height = 250; const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8;
+  loadImg('logo.svg').then(img => { const g = c.getContext('2d'); g.drawImage(img, 0, 0, 2048, 250);
+    const d = g.getImageData(0, 0, 2048, 250), p = d.data;
+    for (let i = 0; i < p.length; i += 4) { if (Math.min(p[i], p[i + 1], p[i + 2]) > 200) p[i + 3] = 0; const y = (i / 4 / 2048) / 250; p[i] = p[i + 1] = 228 - y * 70; p[i + 2] = 236 - y * 60; }
+    g.putImageData(d, 0, 0); tex.needsUpdate = true; });
+  flat(tex, 17, 17 * 222 / 1819, ent, 0, 12.4, -18.9); }
+// the atrium screen on its black fascia, over the bowl entrances
+box(23, 2.7, 1.4, unlit(0x0a0a0b), 0, 8.4, -18.3, ent);
+{ const g = new THREE.Group(); g.position.set(0, 8.4, -17.58); ent.add(g); screen(D.atrium, 20.04, 1.98, g, 0, 0, 0); }
+// wayfinding band under the fascia
+box(46, 1.0, 1.0, unlit(0x111214), 0, 6.3, -18.5, ent);
+flat(canvasTex(4096, 90, (g, w, h) => {
+  g.fillStyle = '#111214'; g.fillRect(0, 0, w, h); g.fillStyle = '#e9e9ea'; g.textBaseline = 'alphabetic';
+  const item = (x, small, big) => { g.font = '600 20px ui-rounded, -apple-system, sans-serif'; g.fillText(small, x, 32);
+    g.font = '700 40px ui-rounded, -apple-system, sans-serif'; g.fillText(big, x, 76); return x + g.measureText(big).width + 46; };
+  g.font = '700 46px -apple-system, sans-serif'; g.fillText('←', 40, 74);
+  let x = 120; for (const [s, b] of [['SECTIONS', '1–16'], ['', '102–115'], ['', '201–215'], ['SUITES', 'A1–A63'], ['', 'B1–B15'], ['', 'VIP ENTRY'], ['LOGES', 'LG1–LG5']]) x = item(x, s, b);
+  x = 2300; for (const [s, b] of [['SECTIONS', '31–16'], ['', '126–117'], ['', '231–217'], ['SUITES', 'B15–B30']]) x = item(x, s, b);
+  g.font = '700 46px -apple-system, sans-serif'; g.fillText('→', w - 90, 74); }), 46, 1.0, ent, 0, 6.3, -17.99, 0, { transparent: false });
+// bowl entrances: dark openings with lit concession signs deep inside, separated by slate columns lettered BARCLAYS
+for (const x of [-16, 0, 16]) {
+  box(11, 5.8, 0.05, unlit(0x050506), x, 2.9, -18.97, ent);
+  for (const [dx, col] of [[-3, '#f3c27a'], [2.5, '#ffffff']]) flat(staticTex('', col, 64, 32), 1.8, 0.35, ent, x + dx, 3.6 + Math.random(), -18.9, 0, { transparent: false, color: 0xbbbbbb });
+}
+const pillarTex = canvasTex(128, 1024, (g, w, h) => { g.fillStyle = '#3a3d43'; g.fillRect(0, 0, w, h);
+  g.translate(w / 2, h * .55); g.rotate(-Math.PI / 2); g.fillStyle = 'rgba(225,228,232,.8)'; g.font = '600 56px ui-rounded, -apple-system, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('BARCLAYS', 0, 0); });
+for (const x of [-24, -8, 8, 24]) { box(1.4, 5.8, 1.2, unlit(0x3a3d43), x, 2.9, -18.4, ent); flat(pillarTex, 1.4, 5.8, ent, x, 2.9, -17.79, 0, { transparent: false }); }
+// ceiling: black deck with a grid of exposed steel beams and hanging cylinder lights
+box(60, 0.3, 34, unlit(0x05070c), 0, LH, -2, ent);
+for (let x = -27; x <= 27; x += 6) box(0.5, 1.1, 34, unlit(0x10131a), x, LH - 0.7, -2, ent);
+for (let z = -16; z <= 12; z += 7) box(60, 0.7, 0.4, unlit(0x10131a), 0, LH - 0.5, z, ent);
+{ const glow = new THREE.MeshBasicMaterial({ color: 0xfff6e8 }), can = new THREE.CylinderGeometry(0.15, 0.15, 1.6, 16);
+  const cable = new THREE.CylinderGeometry(0.01, 0.01, 1, 4), dark = new THREE.MeshBasicMaterial({ color: 0x222222 });
+  const spots = []; for (let x = -25; x <= 25; x += 7) for (let z = -14; z <= 12; z += 6.5) spots.push([x + (Math.random() - .5) * 3, z + (Math.random() - .5) * 3, 13.2 + Math.random() * 2.6]);
+  const lamps = new THREE.InstancedMesh(can, glow, spots.length), wires = new THREE.InstancedMesh(cable, dark, spots.length), o = new THREE.Object3D();
+  spots.forEach(([x, z, y], i) => { o.position.set(x, y, z); o.scale.set(1, 1, 1); o.updateMatrix(); lamps.setMatrixAt(i, o.matrix);
+    o.position.set(x, (y + 1 + LH) / 2, z); o.scale.set(1, LH - y - 1, 1); o.updateMatrix(); wires.setMatrixAt(i, o.matrix); });
+  lamps.raycast = wires.raycast = () => {}; ent.add(lamps, wires); }
+// lighting: blue wash on the curtain, warm pools on the floor
+for (const [x, z] of [[-20, -14], [0, -14], [20, -14], [-26, 2], [26, 2]]) { const l = new THREE.PointLight(0x3ab4ff, 1.4, 26, 2); l.position.set(x, 10.5, z); ent.add(l); }
+for (const [x, z] of [[-14, -6], [0, -6], [14, -6], [-14, 6], [0, 6], [14, 6]]) { const l = new THREE.PointLight(0xffe7c4, 0.9, 20, 2); l.position.set(x, 9, z); ent.add(l); }
+// glass front onto the plaza
+box(70, 0.2, 40, mat(0x6f7176), 0, -0.12, 36, ent);      // plaza paving outside
+box(60, LH, 0.1, M.glass, 0, LH / 2, 15, ent);
+for (let x = -30; x <= 30; x += 3) box(0.15, LH, 0.2, M.dark, x, LH / 2, 15, ent);
+// Box office on the west wall: horizontal screens over the windows, vertical screens on each side
+{ const g = new THREE.Group(); g.position.set(-29.8, 0, -4); g.rotation.y = Math.PI / 2; ent.add(g);
+  box(12, 1.2, 0.6, M.wood, 0, 0.6, 0.3, g);
+  for (const x of [-3, 3]) { box(2.6, 1.8, 0.1, M.bezel, x, 3.7, 0.05, g); screen(D.boH, 2.4, 2.4 * 1080 / 1600, g, x, 3.7, 0.11); }
+  for (const x of [-7.2, 7.2]) { box(1.15, 2.7, 0.1, M.bezel, x, 2.5, 0.05, g); screen(D.boV, 1.0, 1.0 * 1820 / 720, g, x, 2.5, 0.11); } }
+// Store panel by the doors
+{ const g = new THREE.Group(); g.position.set(12, 1.6, 14.6); g.rotation.y = Math.PI; ent.add(g);
+  box(0.62, 1.08, 0.08, M.bezel, 0, 0, -0.05, g); screen(D.store, 0.55, 0.55 * 320 / 174, g, 0, 0, 0); }
+// Three wayfinding kiosks on the plaza: two fullscreen, one showing the alt ad over the map
+for (const [x, alt] of [[-14, false], [0, true], [14, false]]) {
+  const g = new THREE.Group(); g.position.set(x, 0, 24); ent.add(g);   // screens face the plaza
+  box(1.35, 2.6, 0.45, M.bezel, 0, 1.3, 0, g);
+  const w = 1.08, h = 1.92;
+  if (alt) { screen(D.wayAlt, w, h * 600 / 1920, g, 0, 1.45 + h / 2 - h * 300 / 1920, 0.23);
+             staticPlane(staticTex('MAP', '#cfe3f2', 540, 660), w, h * 1320 / 1920, g, 0, 1.45 - h / 2 + h * 660 / 1920, 0.229); }
+  else screen(D.wayFull, w, h, g, 0, 1.45, 0.23);
+}
+
+// ---------- views ----------
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const VIEWS = {
+  'Entrance': [V3(-200, 4, 40), V3(-200, 3, 10)],
+  'Lobby': [V3(-200 + 21, 11, 13), V3(-200 - 5, 5, -13)],   // high corner by the glass: the whole hall
+  'Concourse': [V3(200 - 32, 2.2, 0), V3(200 + 10, 2.6, 0)],
+  'Bowl': [V3(0, 29, 45), V3(0, 9, 0)],
+  'Lower bowl': [V3(0, 8.6, 20), V3(0, 9, -12)],
+  'Corner': [V3(-30, 14.5, 21), V3(4, 7, -2)],
+  'Baseline': [V3(34, 10, 0), V3(-4, 8, 0)],
+  'Scoreboard': [V3(0, 15, 17), V3(0, 25, 0)],
+  'Courtside': [V3(0, 1.7, 7), V3(0, 1.2, -9.4)],
+  'Endwall': [V3(42, 30, 14), V3(70, 39, 0)],
+};
+const tween = { t: 1 };
+function flyTo(pos, target, ms = 1100) { Object.assign(tween, { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: target, t: 0, ms, start: performance.now() }); }
+function viewOf(d) {   // stand in front of a display's first mesh
+  if (d === D.atrium) return [V3(-200, 1.7, 13), V3(-200, 8.5, -19)];   // across the lobby floor, looking up at the screen   // the photo vantage: across the lobby floor, looking up at the screen
+  if (d === D.ribbon || d === D.ring) return d === D.ribbon ? [V3(0, 6, 0), V3(0, RIB_Y, -27)] : [V3(0, 27.2, 14.5), V3(0, 28.4, 0)];   // level with the ring, main video peeking below
+  // frame every screen of a multi-TV wall that shares the first screen's facing (skips mirrored copies)
+  const m = d.meshes.find(m => m.visible) || d.meshes[0]; scene.updateMatrixWorld(true);
+  const n = new THREE.Vector3(0, 0, 1).transformDirection(m.matrixWorld);
+  const bb = new THREE.Box3();
+  for (const o of d.meshes) if (new THREE.Vector3(0, 0, 1).transformDirection(o.matrixWorld).dot(n) > 0.99 && o.getWorldPosition(new THREE.Vector3()).distanceTo(m.getWorldPosition(new THREE.Vector3())) < 6) bb.expandByObject(o);   // neighbouring screens of one wall only
+  const c = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3()).length();
+  return [c.clone().add(n.multiplyScalar(Math.max(2.2, size * 1.1))).add(V3(0, 0.3, 0)), c];
+}
+const viewsBar = document.getElementById('views');
+// view switching lives in the shared sidebar (sidebar.js); this bar keeps the layout toggles
+window.goView = k => VIEWS[k] && flyTo(...VIEWS[k]);
+const seg = (labels, fn, label) => { const s = document.createElement('div'); s.className = 'bar'; s.setAttribute('role', 'group'); s.setAttribute('aria-label', label);
+  labels.forEach((l, i) => { const b = document.createElement('button'); b.textContent = l; if (!i) b.classList.add('on');
+    b.onclick = () => { s.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); fn(i); }; s.append(b); }); viewsBar.append(s); };
+// layouts that share a spot switch when their display is picked in the Display panel (no separate toggles)
+const setEndwall = half => endwalls.forEach(e => { e.full.visible = !half; e.half.visible = half; });
+const setTeam = liberty => { netsMesh.visible = !liberty; libMesh.visible = liberty; setCourtTeam(liberty ? 'liberty' : 'nets'); };
+
+// ---------- Display Assets panel, selection, loading creatives ----------
+// sidebar.js adds each row's icon and +/✓ button and filters the list to the current view.
+const list = document.getElementById('list');
+let selected = null;
+for (const d of displays) {
+  const row = document.createElement('div'); row.className = 'row'; row.dataset.id = d.id; d.row = row;
+  row.innerHTML = `<div class="h"><b>${d.name}</b><span class="d">${d.pw} × ${d.ph}</span></div><div class="n">${d.note}</div><div class="f"></div>
+    <button class="clear" data-act="clear" type="button">Clear</button><input type="file" accept="image/*,video/*" hidden>`;
+  row.querySelector('.clear').onclick = e => { e.stopPropagation(); clear(d); };
+  row.onclick = () => select(d, true);
+  row.querySelector('input').onchange = e => { e.target.files[0] && load(d, e.target.files[0]); e.target.value = ''; };
+  list.append(row);
+}
+function select(d, fly) {
+  // displays that share a spot switch the model to their layout
+  if (d === D.endHalf || d === D.endFull) setEndwall(d === D.endHalf);
+  if (d === D.liberty || d === D.nets) setTeam(d === D.liberty);
+  selected?.row.classList.remove('sel'); selected = d; d.row.classList.add('sel'); d.row.scrollIntoView({ block: 'nearest' });
+  if (fly) flyTo(...viewOf(d));
+}
+// Added designs are kept in this browser (IndexedDB) so they survive switching to the outside model and back.
+const files = new Promise(res => { try { const q = indexedDB.open('adscout-inside', 1);
+  q.onupgradeneeded = () => q.result.createObjectStore('files'); q.onsuccess = () => res(q.result); q.onerror = () => res(null); } catch { res(null); } });
+function load(d, file, save = true) {
+  const url = URL.createObjectURL(file);
+  let tex;
+  if (file.type.startsWith('video')) {
+    const v = document.createElement('video'); Object.assign(v, { src: url, muted: true, loop: true, playsInline: true }); v.play();
+    tex = new THREE.VideoTexture(v);
+  } else tex = new THREE.TextureLoader().load(url);
+  tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8;
+  d.material.map = tex; d.material.needsUpdate = true;
+  d.row.querySelector('.f').textContent = (file.type.startsWith('video') ? '▶ ' : '') + file.name;
+  d.row.classList.add('loaded');
+  if (save) setCleared(d.id, false);
+  if (save) files.then(db => db?.transaction('files', 'readwrite').objectStore('files').put(file, d.id));
+}
+function clear(d) {
+  setCleared(d.id, true);
+  d.material.map = placeholder(d); d.material.needsUpdate = true;
+  d.row.querySelector('.f').textContent = ''; d.row.classList.remove('loaded');
+  files.then(db => db?.transaction('files', 'readwrite').objectStore('files').delete(d.id));
+}
+// Saved designs first; then the campaign's own designs (oculus-bff/out/inside/<id>.mp4) fill any screen that has none,
+// unless that screen's design was deleted here (remembered in localStorage).
+const cleared = () => { try { return new Set(JSON.parse(localStorage.getItem('adscout-inside-cleared') || '[]')); } catch { return new Set(); } };
+const setCleared = (id, on) => { const c = cleared(); on ? c.add(id) : c.delete(id); try { localStorage.setItem('adscout-inside-cleared', JSON.stringify([...c])); } catch {} };
+files.then(db => new Promise(done => { if (!db) return done(); const req = db.transaction('files').objectStore('files').openCursor();
+  req.onsuccess = () => { const c = req.result; if (!c) return done(); const d = displays.find(x => x.id === c.key); if (d) load(d, c.value, false); c.continue(); };
+  req.onerror = done; }))
+  .then(() => Promise.all(displays.filter(d => !d.row.classList.contains('loaded') && !cleared().has(d.id)).map(async d => {
+    const r = await fetch(`oculus-bff/out/inside/${d.id}.mp4`).catch(() => null); if (!r?.ok) return;
+    load(d, new File([await r.blob()], `Locket - ${d.name}.mp4`, { type: 'video/mp4' }), false);
+  })));
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function hit(e) {
+  const r = canvas.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const meshes = displays.flatMap(d => d.meshes).filter(m => m.visible && m.parent.visible);
+  return ray.intersectObjects(meshes, false)[0]?.object.userData.display;
+}
+let down = null;
+canvas.addEventListener('pointerdown', e => down = [e.clientX, e.clientY]);
+canvas.addEventListener('pointerup', e => { if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 5) { const d = hit(e); if (d) select(d, false); } });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0], d = hit(e) || selected; if (f && d) { select(d, false); load(d, f); } });
+
+// ---------- loop ----------
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+camera.position.copy(VIEWS.Bowl[0]); controls.target.copy(VIEWS.Bowl[1]);
+const ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+renderer.setAnimationLoop(() => {
+  if (tween.t < 1) { tween.t = Math.min(1, (performance.now() - tween.start) / tween.ms); const k = ease(tween.t);
+    camera.position.lerpVectors(tween.p0, tween.p1, k); controls.target.lerpVectors(tween.t0, tween.t1, k); }
+  controls.update(); renderer.render(scene, camera);
+});
+window.__inside = { scene, camera, controls, displays, D, flyTo, VIEWS, viewOf, renderer };
+</script>
+<script src="sidebar.js"></script>
