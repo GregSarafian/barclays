@@ -95,21 +95,21 @@
            font: 14px/1.3 ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
     #nav h3 { margin: 14px 10px 6px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6e6e73; }
     #nav h3:first-child { margin-top: 2px; }
-    #nav button { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 12px;
+    #nav > button { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 12px;
                   background: transparent; color: inherit; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
-    #nav button:hover { background: rgba(11,11,12,.07); }
-    #nav button:focus-visible { outline: 2px solid #ffb800; outline-offset: 1px; }
+    #nav > button:hover { background: rgba(11,11,12,.07); }
+    #nav > button:focus-visible { outline: 2px solid #ffb800; outline-offset: 1px; }
     /* selected (both sidebars): white card, subtle shadow, Barclays blue icon */
-    #nav button.on, #panel [data-id].selected, #panel [data-id].sel { background: #fff; color: #0b0b0c; border-color: transparent;
+    #nav > button.on, #panel [data-id].selected, #panel [data-id].sel { background: #fff; color: #0b0b0c; border-color: transparent;
       box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.08); }
-    #nav button.on svg, #panel [data-id].selected .asset-ic, #panel [data-id].sel .asset-ic { color: #00aeef; }
+    #nav > button.on svg, #panel [data-id].selected .asset-ic, #panel [data-id].sel .asset-ic { color: #00aeef; }
     #nav .t { display: grid; gap: 2px; min-width: 0; flex: 1; }
     #nav .num { flex: none; align-self: center; width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center;
                 background: rgba(11,11,12,.08); color: #0b0b0c; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
-    #nav small { font-size: 11.5px; font-weight: 500; line-height: 1.3; color: #6e6e73; }
-    #nav svg, #panel .asset-ic, #panel .asset-add svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor;
+    #nav > button small { font-size: 11.5px; font-weight: 500; line-height: 1.3; color: #6e6e73; }
+    #nav > button svg, #panel .asset-ic, #panel .asset-add svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor;
                   stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-    #nav svg { margin-top: 1px; }
+    #nav > button svg { margin-top: 1px; }
     /* bottom-right controls (both pages): frosted card like the sidebars; selected segment = white card + blue icon */
     #controls .seg, #controls .btn, #views .bar { background: rgba(255,255,255,.78); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
       border: 0; border-radius: 16px; padding: 4px; gap: 2px; box-shadow: 0 12px 40px rgba(0,0,0,.18); color: #0b0b0c;
@@ -153,14 +153,6 @@
     #panel .meta:has(.meta-num) > svg { margin-top: 0; }
     #panel .empty-actions { display: none !important; }
     body.has-nav #title { left: 260px !important; }
-    @media (max-width: 720px) {
-      #nav { top: auto; bottom: 12px; right: 12px; left: 12px; width: auto; height: auto; display: flex; gap: 4px; overflow-x: auto; padding: 6px; }
-      #nav h3, #nav small { display: none; }
-      #nav button { width: auto; white-space: nowrap; align-items: center; }
-      body.has-nav #title { left: 16px !important; }
-      body.has-nav #views { right: 12px !important; bottom: 72px !important; }
-      body.has-nav #controls { right: 12px !important; bottom: 72px !important; }
-    }
   </style>`);
 
   // ---------- left sidebar ----------
@@ -241,6 +233,7 @@
     // views with no placements of their own (seat and roof views) list every screen on the page
     const v = views[here + '#' + key]; current = key; ov.hidden = !(v?.ids.length > 1);   // one display: its row is the view
     if (v) for (const r of rows()) r.hidden = v.ids.length > 0 && !v.ids.includes(r.dataset.id);
+    window.placeSheet?.();
   }
   // a view opens on its Overview shot; a view with a single display opens on that display
   function go(key) {
@@ -292,4 +285,59 @@
   if (want) { mark(want); setTimeout(() => go(want), here === 'index.html' ? 1800 : 50); }
   else mark(here === 'inside.html' ? 'Bowl' : 'oculus');   // each model's opening view
   refresh();
+
+  // ---------- phones: the left sidebar becomes a bottom sheet; the Display list nests under the chosen view ----------
+  document.head.insertAdjacentHTML('beforeend', `<style>
+    #nav > #sheet-head { display: none; }
+    @media (max-width: 720px) {
+      body.has-nav #nav { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 74vh; padding: 0 12px calc(14px + env(safe-area-inset-bottom));
+        border-radius: 22px 22px 0 0; overflow-y: auto; overscroll-behavior: contain; transform: translateY(calc(100% - 58px - env(safe-area-inset-bottom)));
+        transition: transform .4s cubic-bezier(.22,1,.36,1); }
+      body.has-nav #nav:not(.open) { overflow: hidden; }
+      body.has-nav #nav.open { transform: none; }
+      #nav > #sheet-head { display: flex; position: sticky; top: 0; z-index: 1; align-items: center; gap: 10px; width: calc(100% + 24px); margin: 0 -12px 4px;
+        padding: 16px 22px 12px; border: 0; background: inherit; color: inherit; font: inherit; font-weight: 700; font-size: 15px; text-align: left; cursor: pointer; }
+      #sheet-head::before { content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: rgba(11,11,12,.2); }
+      #sheet-head .lbl { flex: 1; }
+      #sheet-head svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .3s; }
+      #nav.open #sheet-head .chev { transform: rotate(180deg); }
+      #sheet-head .cur { color: #00aeef; }
+      /* the Display panel, re-seated inside the sheet under the selected view */
+      #nav #panel { position: static !important; inset: auto !important; width: auto !important; max-height: none !important; margin: 4px 0 10px 30px;
+        transform: none !important; opacity: 1 !important; pointer-events: auto !important; display: block; background: none; border: 0; box-shadow: none;
+        backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0; }
+      #nav #panel header, #nav #panel footer { display: none; }
+      #nav #ad-list, #nav #list { overflow: visible; max-height: none; padding: 0; }
+      body.has-nav #panel-toggle { display: none !important; }
+      /* controls that lived bottom-right sit top-right */
+      body.has-nav #actions { top: calc(12px + env(safe-area-inset-top)); bottom: auto; right: 12px; }
+      body.has-nav #controls, body.has-nav #views { top: calc(12px + env(safe-area-inset-top)) !important; bottom: auto !important; right: 96px !important; }
+      body.has-nav #views { right: 60px !important; }
+      body.clean #nav { transform: translateY(calc(100% + 20px)) !important; }
+      body.clean #controls, body.clean #views { transform: translateY(-16px) !important; }
+    }
+  </style>`);
+  const mq = matchMedia('(max-width: 720px)'), home = { parent: panel.parentNode, next: panel.nextSibling };
+  const head = document.createElement('button'); head.id = 'sheet-head'; head.type = 'button'; head.setAttribute('aria-expanded', 'false');
+  head.innerHTML = `<span class="lbl"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>`;
+  nav.prepend(head);
+  const setOpen = on => { nav.classList.toggle('open', on); head.setAttribute('aria-expanded', on); };
+  head.onclick = () => setOpen(!nav.classList.contains('open'));
+  window.placeSheet = () => {
+    const on = nav.querySelector(':scope > button.on');
+    if (mq.matches) {
+      panel.classList.remove('collapsed');
+      if (on) on.after(panel); else nav.append(panel);
+      head.querySelector('.lbl').innerHTML = on ? `<span class="cur">${on.querySelector('.t span').textContent}</span> · ${panel.querySelectorAll('[data-id]:not([hidden])').length} displays` : 'Views';
+    } else if (panel.parentNode !== home.parent) home.parent.insertBefore(panel, home.next);
+  };
+  // picking a view keeps the sheet open to show its displays; picking a display (or Overview) drops it to show the screen
+  nav.addEventListener('click', e => {
+    if (!mq.matches || !e.isTrusted) return;   // ignore the clicks a view makes on its own Overview row
+    const b = e.target.closest('button');
+    if (b && b.parentNode === nav && b !== head) setOpen(true);
+    else if (e.target.closest('#panel') && (e.target.closest('.ov-row') || (e.target.closest('[data-id]') && !e.target.closest('button, input, label')))) setTimeout(() => setOpen(false), 120);
+  });
+  mq.addEventListener('change', () => { setOpen(false); window.placeSheet(); });
+  window.placeSheet();
 })();
