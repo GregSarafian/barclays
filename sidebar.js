@@ -289,6 +289,16 @@
   // ---------- phones: the left sidebar becomes a bottom sheet; the Display list nests under the chosen view ----------
   document.head.insertAdjacentHTML('beforeend', `<style>
     #nav > #sheet-head { display: none; }
+    /* tablets and phones: the Display panel is re-seated inside the left sidebar, under the selected view */
+    @media (max-width: 1180px) {
+      #nav #panel { position: static !important; inset: auto !important; width: auto !important; max-height: none !important; margin: 4px 0 10px 30px;
+        transform: none !important; opacity: 1 !important; pointer-events: auto !important; display: block; background: none; border: 0; box-shadow: none;
+        backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0; }
+      #nav #panel header, #nav #panel footer { display: none; }
+      #nav #ad-list, #nav #list { overflow: visible; max-height: none; padding: 0; }
+      body.has-nav #panel-toggle { display: none !important; }
+    }
+    @media (min-width: 721px) and (max-width: 1180px) { body.has-nav #nav { width: 300px; } }
     @media (max-width: 720px) {
       body.has-nav #nav { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 74vh; padding: 0 12px calc(14px + env(safe-area-inset-bottom));
         border-radius: 22px 22px 0 0; overflow-y: auto; overscroll-behavior: contain; transform: translateY(calc(100% - 58px - env(safe-area-inset-bottom)));
@@ -302,13 +312,6 @@
       #sheet-head svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .3s; }
       #nav.open #sheet-head .chev { transform: rotate(180deg); }
       #sheet-head .cur { color: #00aeef; }
-      /* the Display panel, re-seated inside the sheet under the selected view */
-      #nav #panel { position: static !important; inset: auto !important; width: auto !important; max-height: none !important; margin: 4px 0 10px 30px;
-        transform: none !important; opacity: 1 !important; pointer-events: auto !important; display: block; background: none; border: 0; box-shadow: none;
-        backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 0; }
-      #nav #panel header, #nav #panel footer { display: none; }
-      #nav #ad-list, #nav #list { overflow: visible; max-height: none; padding: 0; }
-      body.has-nav #panel-toggle { display: none !important; }
       /* controls that lived bottom-right sit top-right */
       body.has-nav #actions { top: calc(12px + env(safe-area-inset-top)); bottom: auto; right: 12px; }
       body.has-nav #controls, body.has-nav #views { top: calc(12px + env(safe-area-inset-top)) !important; bottom: auto !important; right: 96px !important; }
@@ -317,6 +320,7 @@
       body.clean #controls, body.clean #views { transform: translateY(-16px) !important; }
     }
   </style>`);
+  const nestMq = matchMedia('(max-width: 1180px)');
   const mq = matchMedia('(max-width: 720px)'), home = { parent: panel.parentNode, next: panel.nextSibling };
   const head = document.createElement('button'); head.id = 'sheet-head'; head.type = 'button'; head.setAttribute('aria-expanded', 'false');
   head.innerHTML = `<span class="lbl"></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>`;
@@ -325,7 +329,7 @@
   head.onclick = () => setOpen(!nav.classList.contains('open'));
   window.placeSheet = () => {
     const on = nav.querySelector(':scope > button.on');
-    if (mq.matches) {
+    if (nestMq.matches) {
       panel.classList.remove('collapsed');
       if (on) on.after(panel); else nav.append(panel);
       head.querySelector('.lbl').innerHTML = on ? `<span class="cur">${on.querySelector('.t span').textContent}</span> · ${panel.querySelectorAll('[data-id]:not([hidden])').length} displays` : 'Views';
@@ -339,5 +343,29 @@
     else if (e.target.closest('#panel') && (e.target.closest('.ov-row') || (e.target.closest('[data-id]') && !e.target.closest('button, input, label')))) setTimeout(() => setOpen(false), 120);
   });
   mq.addEventListener('change', () => { setOpen(false); window.placeSheet(); });
+  nestMq.addEventListener('change', () => window.placeSheet());
+
+  // ---------- the 3D view centres on the area the sidebars leave free (not on the whole window) ----------
+  const cam = () => window.__barclays?.camera || (typeof camera !== 'undefined' ? camera : null);
+  function recenter() {
+    const c = cam(); if (!c?.setViewOffset) return;
+    const W = innerWidth, H = innerHeight, clean = document.body.classList.contains('clean');
+    let l = 0, r = W, b = H;
+    if (!clean && !mq.matches) {
+      l = nav.getBoundingClientRect().right;
+      const pr = panel.parentNode !== nav && !panel.classList.contains('collapsed') && panel.getBoundingClientRect();
+      if (pr && pr.width && pr.left > W / 2) r = pr.left;
+    }
+    if (!clean && mq.matches) b = H - head.offsetHeight;   // phones: above the closed sheet's bar (stays put while the sheet opens)
+    const dx = (l + r) / 2 - W / 2, dy = b / 2 - H / 2;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) c.clearViewOffset(); else c.setViewOffset(W, H, -dx, -dy, W, H);
+    c.updateProjectionMatrix(); window.__barclays?.renderOnce?.();
+  }
+  let rq = 0; const soon = () => { cancelAnimationFrame(rq); rq = requestAnimationFrame(recenter); };
+  addEventListener('resize', () => setTimeout(soon, 0));
+  new MutationObserver(soon).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(soon).observe(panel, { attributes: true, attributeFilter: ['class'] });
+  nav.addEventListener('transitionend', soon); panel.addEventListener('transitionend', soon);
+  Promise.resolve(window.__barclaysReady).then(soon); setTimeout(soon, 500);
   window.placeSheet();
 })();
